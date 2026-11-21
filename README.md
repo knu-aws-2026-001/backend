@@ -11,9 +11,9 @@ AWS Skill Training 1조 프로젝트 **"취소된 하루를 양도합니다"** �
 
 | 문서 | 내용 |
 |---|---|
-| [`MVP.md`](./MVP.md) | MVP 범위, 도메인 모델, DynamoDB 설계, **API 계약(§7)**, 사진 파이프라인, 검증 시나리오 T1–T17 |
+| [`MVP.md`](./MVP.md) | MVP 범위, 도메인 모델, DynamoDB 설계, **API 계약(§7)**, AI 하루 카드 정리 에이전트(§7.2), 사진 파이프라인, 검증 시나리오 T1–T22 |
 | [`docs/REQUIREMENTS.md`](./docs/REQUIREMENTS.md) | 요구사항 명세서 (`BE-*` ID, 인수 기준, 확인이 필요한 사항) |
-| [`docs/DEVELOPMENT_PLAN.md`](./docs/DEVELOPMENT_PLAN.md) | 개발계획서 (7단계 작업, 프론트 연동 지점 S0–S5, 테스트 전략) |
+| [`docs/DEVELOPMENT_PLAN.md`](./docs/DEVELOPMENT_PLAN.md) | 개발계획서 (7단계 작업(6단계는 6a·6b), 프론트 연동 지점 S0–S5, 테스트 전략) |
 
 ## 관련 저장소
 
@@ -27,7 +27,7 @@ AWS Skill Training 1조 프로젝트 **"취소된 하루를 양도합니다"** �
    ├─ Cognito User Pool (로그인 → ID 토큰)
    └─▶ API Gateway (HTTP API, JWT authorizer)
           └─▶ Lambda ──▶ DynamoDB (단일 테이블)
-                 ├─▶ Amazon Bedrock (AI 하루 카드)
+                 ├─▶ Bedrock Converse tool use (하루 카드 에이전트, Global CRIS) + Guardrails(보조)
                  └─▶ S3 사진 버킷 presigned URL 발급
 
 사진: 브라우저 ──PUT──▶ S3 ──▶ SQS ──▶ 사진 처리 Lambda (검사·축소·메타데이터 제거 → 완료 트랜잭션)
@@ -40,7 +40,8 @@ AWS Skill Training 1조 프로젝트 **"취소된 하루를 양도합니다"** �
 |---|---|
 | 런타임 | Python 3.12 (boto3, pydantic, Pillow 레이어) |
 | IaC | AWS SAM (`dev` / `demo` 환경) |
-| 리전 | `ap-northeast-2` (Bedrock은 모델 가용 리전에 따라 별도 지정 가능) |
+| 리전 | `ap-northeast-2` (Bedrock 경량 모델은 Global CRIS 추론 프로필로 호출, 국외 리전에서 처리될 수 있음) |
+| AI 에이전트 | Converse API tool use 루프를 boto3로 직접 구현 (`AGENT_MODE=pipeline`이면 레벨 0) |
 
 ## 진행 상황
 
@@ -51,7 +52,8 @@ AWS Skill Training 1조 프로젝트 **"취소된 하루를 양도합니다"** �
 - [ ] 3단계. 이어받기·포기·완료 트랜잭션 + 동시성 통합 테스트
 - [ ] 4단계. 방문 기록(글), 수신함·읽음·답장
 - [ ] 5단계. 사진 버킷·SQS·DLQ·처리 Lambda
-- [ ] 6단계. Bedrock AI 하루 카드
+- [ ] 6a단계. AI 레벨 0 파이프라인, card-sessions 계약, AiQuota
+- [ ] 6b단계. AI 에이전트 루프·서버 게이트·턴 잠금, T18–T22, 오프라인 평가
 - [ ] 7단계. CloudFront·웹 버킷, 알람·대시보드, seed/report 스크립트, 시연 리허설
 
 ## 사전 준비
@@ -60,7 +62,7 @@ AWS Skill Training 1조 프로젝트 **"취소된 하루를 양도합니다"** �
 - AWS SAM CLI
 - Python 3.12
 - Docker (Pillow 레이어를 `sam build --use-container`로 빌드할 때 필요)
-- Amazon Bedrock 모델 접근 권한 (6단계 전에 콘솔에서 신청)
+- Amazon Bedrock 모델 접근 권한 (6a단계 전에 콘솔에서 신청). `aws bedrock list-inference-profiles --region ap-northeast-2`로 Global CRIS 프로필을 확인하고, SCP가 목적지 리전을 막지 않는지 점검
 
 ## 배포
 
@@ -72,7 +74,7 @@ AWS Skill Training 1조 프로젝트 **"취소된 하루를 양도합니다"** �
 
 1단계 이후 추가
 
-통합 테스트(T1–T17)는 배포된 `dev` 스택을 대상으로 실행합니다. 동시성·멱등성은 로컬 목으로 검증할 수 없기 때문입니다.
+통합 테스트(T1–T22)는 배포된 `dev` 스택을 대상으로 실행합니다. 동시성·멱등성은 로컬 목으로 검증할 수 없기 때문입니다.
 
 ## 데모 데이터
 
